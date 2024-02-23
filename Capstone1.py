@@ -634,7 +634,7 @@ elif selected == "Data Analysis":
         df1.index = df1.index + 1
         st.write(df1)
         df = pd.DataFrame(df1)
-        fig = px.pie(df,values="TOTAL_NO_OF_VIDEOS",names = "CHANNEL NAME", hole=0.5)  
+        fig = px.pie(df,values="TOTAL_NO_OF_VIDEOS",names = "CHANNEL NAME", hole=0.5,title="TOTAL NUMBER OF VIDEOS")  
         st.plotly_chart(fig)   
         
     elif question == "3. What are the top 10 most viewed videos and their respective channels?":
@@ -650,8 +650,7 @@ elif selected == "Data Analysis":
         fig=px.bar(
             df,
             x="VIDEO_CHANNEL",y="VIEW_COUNT",
-            #animation_frame="CHANNEL NAME"
-            #animation_group="VIDEO NAME"
+            title="TOP 10 MOST VIEWED VIDEOS"
         )
         st.plotly_chart(fig)
 
@@ -663,7 +662,7 @@ elif selected == "Data Analysis":
         df1.index = df1.index + 1
         st.write(df1)
         df=pd.DataFrame(df1)
-        fig = px.pie(df,values="COMMENTS_COUNT",names = "CHANNEL NAME", hole=0.5)  
+        fig = px.pie(df,values="COMMENTS_COUNT",names = "CHANNEL NAME", hole=0.5,title="TOTAL NUMBER OF COMMENTS")  
         st.plotly_chart(fig)   
         
        
@@ -678,7 +677,7 @@ elif selected == "Data Analysis":
         custom_colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
                  '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
         df["VIDEO_CHANNEL"] = df["VIDEO NAME"] + " - " + df["CHANNEL NAME"]
-        fig=px.bar(df,x="VIDEO_CHANNEL",y="LIKE_COUNT",color=custom_colors)
+        fig=px.bar(df,x="VIDEO_CHANNEL",y="LIKE_COUNT",color=custom_colors,title="VIDEOS WITH HIGHEST NUMBER OF LIKES")
         st.plotly_chart(fig)
         
     elif question == "6. What is the total number of likes for each video, and what are their corresponding video names?":
@@ -690,7 +689,7 @@ elif selected == "Data Analysis":
         st.write(df1)
         df = pd.DataFrame(df1)
         df["VIDEO_CHANNEL"] = df["VIDEO NAME"] + " - " + df["CHANNEL NAME"]
-        fig = px.pie(df,values="LIKE_COUNT",names="CHANNEL NAME",hole=0.5)
+        fig = px.pie(df,values="LIKE_COUNT",names="CHANNEL NAME",hole=0.5,title="TOTAL NUMBER OF LIKES FOR EACH VIDEO")
         st.plotly_chart(fig) 
 
     elif question == "7. What is the total number of views for each channel, and what are their corresponding channel names?":
@@ -701,7 +700,7 @@ elif selected == "Data Analysis":
         df1.index = df1.index + 1
         st.write(df1)
         df = pd.DataFrame(df1)
-        fig=px.bar(df,x="CHANNEL NAME",y="CHANNEL_VIEWS",height=500,width=500)
+        fig=px.bar(df,x="CHANNEL NAME",y="CHANNEL_VIEWS",height=500,width=500,title="TOTAL NUMBER OF VIEWS FOR EACH CHANNEL")
         st.plotly_chart(fig)
 
     elif question == "8. What are the names of all the channels that have published videos in the year 2022?":
@@ -729,8 +728,10 @@ elif selected == "Data Analysis":
         df1.index = df1.index + 1
         st.write(df1)
         df = pd.DataFrame(df1)
+        custom_colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
+                 '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
         df["VIDEO_CHANNEL"] = df["VIDEO_NAME"] + " - " + df["CHANNEL NAME"]
-        fig=px.bar(df,x="VIDEO_CHANNEL",y="COMMENTS_COUNT")
+        fig=px.bar(df,x="VIDEO_CHANNEL",y="COMMENTS_COUNT",title="CHANNELS WITH HIGHEST NUMBER OF COMMENTS",color=custom_colors)
         st.plotly_chart(fig)
 
     if st.button("Done"):
