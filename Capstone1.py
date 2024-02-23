@@ -11,6 +11,7 @@ from datetime import datetime
 import streamlit as st
 from streamlit_option_menu import option_menu
 import re
+import plotly.express as px
 
 api_key1="AIzaSyAe7chpUyFRqYu3Y6FnULzNl6pPkEs04iM"
 api_key2="AIzaSyA0t7cl3lP8N_J3Edy_25AzlSNOs6Z7P4o"
@@ -207,6 +208,20 @@ def channel_table(channel_id):
     )
     cursor=database1.cursor()
 
+    try:
+        create_channel_table='''create table channel_table(CHANNEL_NAME varchar(50),
+                                                            CHANNEL_ID varchar(100) primary key,
+                                                            SUBSCRIPTION_COUNT bigint,
+                                                            CHANNEL_VIEWS bigint,
+                                                            CHANNEL_DESCRIPTION text, 
+                                                            PLAYLIST_ID varchar(100),
+                                                            TOTAL_VIDEOS bigint)'''
+        cursor.execute(create_channel_table)
+        database1.commit()
+    except:
+        print("Channel Table is created")
+
+
     channel_list=[]
     client=pymongo.MongoClient('mongodb+srv://jeriyl94:atlas12345@youtubedataharvestingwa.oppgas0.mongodb.net/')
     db=client["Utube"]
@@ -262,6 +277,29 @@ def video_table(channel_id):
         host='localhost'
     )
     cursor = database1.cursor()
+
+    try:
+        create_video_table = '''create table if not exists video_table(
+                                                                CHANNEL_NAME varchar(150),
+                                                                CHANNEL_ID varchar(100),
+                                                                VIDEO_NAME varchar(150),
+                                                                VIDEO_ID varchar(150) primary key,
+                                                                VIDEO_DESCRIPTION text,
+                                                                VIDEO_TAGS text,
+                                                                PUBLISHED_DATE timestamp,
+                                                                VIEW_COUNT bigint,
+                                                                LIKE_COUNT bigint,
+                                                                FAVOURITE_COUNT bigint,
+                                                                COMMENTS_COUNT bigint,
+                                                                DURATION time,
+                                                                THUMBNAIL varchar(200),
+                                                                CAPTION_STATUS varchar(10),
+                                                                DEFINITION varchar(10)
+                                                                )'''
+        cursor.execute(create_video_table)
+        database1.commit()
+    except mysql.connector.Error as e:
+        print("Error creating video_table:", e)
 
     video_list = []
     client=pymongo.MongoClient('mongodb+srv://jeriyl94:atlas12345@youtubedataharvestingwa.oppgas0.mongodb.net/')
@@ -341,6 +379,19 @@ def comments_table(channel_id):
         )
     cursor=database1.cursor()
 
+    try:
+        create_comments_table='''create table if not exists comments_table(
+                                                                    AUTHOR_NAME varchar(50),
+                                                                    COMMENT_ID varchar(150) primary key,
+                                                                    VIDEO_ID varchar(100),
+                                                                    COMMENT_TEXT text,
+                                                                    PUBLISHED_DATE timestamp
+                                                                    )'''
+        cursor.execute(create_comments_table)
+        database1.commit()
+    except:
+         print("COMMENTS TABLE IS ALREADY CREATED")
+
     comments_list=[]
     client=pymongo.MongoClient('mongodb+srv://jeriyl94:atlas12345@youtubedataharvestingwa.oppgas0.mongodb.net/')
     db=client["Utube"]
@@ -382,6 +433,19 @@ def playlist_table(channel_id):
         host='localhost'
     )
     cursor=database1.cursor()
+
+    try:
+        create_playlist_table='''create table if not exists playlist_table(PLAYLIST_ID varchar(50) primary key,
+                                                                                    TITLE varchar(100),
+                                                                                    CHANNEL_ID varchar(100),
+                                                                                    CHANNEL_NAME varchar(50),
+                                                                                    PUBLISHED_DATE timestamp,
+                                                                                    VIDEO_COUNT bigint
+                                                                                    )'''
+        cursor.execute(create_playlist_table)
+        database1.commit()
+    except:
+         print("PLAYLIST TABLE IS ALREADY CREATED")
 
     playlist_list=[]
     client=pymongo.MongoClient('mongodb+srv://jeriyl94:atlas12345@youtubedataharvestingwa.oppgas0.mongodb.net/')
@@ -510,6 +574,27 @@ elif selected == "Store in MongoDB":
     if __name__ == "__main__":
         main()
 
+elif selected == "Migration of Data":
+    client = pymongo.MongoClient('mongodb+srv://jeriyl94:atlas12345@youtubedataharvestingwa.oppgas0.mongodb.net/')
+    db = client["Utube"]
+    collection = db["Utube Details"]
+
+    # Retrieve channel names and IDs from MongoDB collection
+    channel_data = collection.find({}, {"_id": 0, "Channel-Details": 1})
+    channels = [(ch_data["Channel-Details"]["CHANNEL_NAME"], ch_data["Channel-Details"]["CHANNEL_ID"]) for ch_data in channel_data]
+
+    # Dropdown to select a channel for migration
+    selected_channel = st.selectbox(
+        'Choose the Channel to get stored in MySQL',
+        [channel[0] for channel in channels])  # Display channel names in the dropdown
+
+    migration_button_clicked = st.button("Migrate Data")
+
+    if migration_button_clicked:
+        selected_channel_id = next(channel[1] for channel in channels if channel[0] == selected_channel)
+        tables(selected_channel_id)
+        st.success("Tables are inserted in the MySQL")
+
 elif selected == "Data Analysis":
     st.header("Data Analysis")
     question = st.selectbox("Choose the question to get the result.", ("Choose one Question",
@@ -540,6 +625,7 @@ elif selected == "Data Analysis":
         df1 = pd.DataFrame(t1,columns=["VIDEO NAME","CHANNEL_NAME"])
         df1.index = df1.index + 1
         st.write(df1)
+        
     elif question == "2. Which channels have the most number of videos, and how many videos do they have?":
         query1 = """SELECT CHANNEL_NAME,TOTAL_VIDEOS FROM channel_table ORDER BY TOTAL_VIDEOS DESC;"""
         cursor.execute(query1)
@@ -547,6 +633,10 @@ elif selected == "Data Analysis":
         df1 = pd.DataFrame(t1,columns=["CHANNEL NAME","TOTAL_NO_OF_VIDEOS"])
         df1.index = df1.index + 1
         st.write(df1)
+        df = pd.DataFrame(df1)
+        fig = px.pie(df,values="TOTAL_NO_OF_VIDEOS",names = "CHANNEL NAME", hole=0.5)  
+        st.plotly_chart(fig)   
+        
     elif question == "3. What are the top 10 most viewed videos and their respective channels?":
         query1 = """SELECT CHANNEL_NAME,VIDEO_NAME,VIEW_COUNT FROM video_table 
                     ORDER BY view_count DESC LIMIT 10;"""
@@ -555,6 +645,16 @@ elif selected == "Data Analysis":
         df1 = pd.DataFrame(t1,columns=["CHANNEL NAME","VIDEO NAME","VIEW_COUNT"])
         df1.index = df1.index + 1
         st.write(df1)
+        df = pd.DataFrame(df1)
+        df["VIDEO_CHANNEL"] = df["VIDEO NAME"] + " - " + df["CHANNEL NAME"]
+        fig=px.bar(
+            df,
+            x="VIDEO_CHANNEL",y="VIEW_COUNT",
+            #animation_frame="CHANNEL NAME"
+            #animation_group="VIDEO NAME"
+        )
+        st.plotly_chart(fig)
+
     elif question == "4. How many comments were made on each video, and what are their corresponding video names?":
         query1 = """SELECT CHANNEL_NAME,VIDEO_NAME,COMMENTS_COUNT FROM VIDEO_TABLE"""
         cursor.execute(query1)
@@ -562,13 +662,25 @@ elif selected == "Data Analysis":
         df1 = pd.DataFrame(t1,columns=["CHANNEL NAME","VIDEO NAME","COMMENTS_COUNT"])
         df1.index = df1.index + 1
         st.write(df1)
+        df=pd.DataFrame(df1)
+        fig = px.pie(df,values="COMMENTS_COUNT",names = "CHANNEL NAME", hole=0.5)  
+        st.plotly_chart(fig)   
+        
+       
     elif question == "5. Which videos have the highest number of likes, and what are their corresponding channel names?":
-        query1 = """SELECT CHANNEL_NAME,VIDEO_NAME,LIKE_COUNT FROM VIDEO_TABLE ORDER BY LIKE_COUNT DESC;"""
+        query1 = """SELECT CHANNEL_NAME,VIDEO_NAME,LIKE_COUNT FROM VIDEO_TABLE ORDER BY LIKE_COUNT DESC LIMIT 10;"""
         cursor.execute(query1)
         t1 = cursor.fetchall()
         df1 = pd.DataFrame(t1,columns=["CHANNEL NAME","VIDEO NAME","LIKE_COUNT"])
         df1.index = df1.index + 1
         st.write(df1)
+        df = pd.DataFrame(df1)
+        custom_colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
+                 '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
+        df["VIDEO_CHANNEL"] = df["VIDEO NAME"] + " - " + df["CHANNEL NAME"]
+        fig=px.bar(df,x="VIDEO_CHANNEL",y="LIKE_COUNT",color=custom_colors)
+        st.plotly_chart(fig)
+        
     elif question == "6. What is the total number of likes for each video, and what are their corresponding video names?":
         query1 = """SELECT CHANNEL_NAME,VIDEO_NAME,LIKE_COUNT FROM VIDEO_TABLE"""
         cursor.execute(query1)
@@ -576,6 +688,11 @@ elif selected == "Data Analysis":
         df1 = pd.DataFrame(t1,columns=["CHANNEL NAME","VIDEO NAME","LIKE_COUNT"])
         df1.index = df1.index + 1
         st.write(df1)
+        df = pd.DataFrame(df1)
+        df["VIDEO_CHANNEL"] = df["VIDEO NAME"] + " - " + df["CHANNEL NAME"]
+        fig = px.pie(df,values="LIKE_COUNT",names="CHANNEL NAME",hole=0.5)
+        st.plotly_chart(fig) 
+
     elif question == "7. What is the total number of views for each channel, and what are their corresponding channel names?":
         query1 = """SELECT CHANNEL_NAME,CHANNEL_VIEWS FROM CHANNEL_TABLE"""
         cursor.execute(query1)
@@ -583,6 +700,10 @@ elif selected == "Data Analysis":
         df1 = pd.DataFrame(t1,columns=["CHANNEL NAME","CHANNEL_VIEWS"])
         df1.index = df1.index + 1
         st.write(df1)
+        df = pd.DataFrame(df1)
+        fig=px.bar(df,x="CHANNEL NAME",y="CHANNEL_VIEWS",height=500,width=500)
+        st.plotly_chart(fig)
+
     elif question == "8. What are the names of all the channels that have published videos in the year 2022?":
         query1 = """SELECT CHANNEL_NAME,PUBLISHED_DATE FROM VIDEO_TABLE 
                     WHERE YEAR(PUBLISHED_DATE) = 2022;"""
@@ -591,44 +712,31 @@ elif selected == "Data Analysis":
         df1 = pd.DataFrame(t1,columns=["CHANNEL NAME","PUBLISHED_DATE"])
         df1.index = df1.index + 1
         st.write(df1)
+
     elif question == "9. What is the average duration of all videos in each channel, and what are their corresponding channel names?":
         query1 = """SELECT Channel_name, CONCAT(FLOOR(AVG(TIME_TO_SEC(Duration)) / 3600), ' hours ', FLOOR((AVG(TIME_TO_SEC(Duration)) % 3600) / 60), ' minutes ', (AVG(TIME_TO_SEC(Duration)) % 60), ' seconds') AS Average_Duration FROM Video_table GROUP BY Channel_name;"""
         cursor.execute(query1)
         t1 = cursor.fetchall()
-        df1 = pd.DataFrame(t1,columns=["CHANNEL NAME","PUBLISHED_DATE"])
+        df1 = pd.DataFrame(t1,columns=["CHANNEL NAME","DURATION"])
         df1.index = df1.index + 1
         st.write(df1)
+
     elif question == "10. Which videos have the highest number of comments, and what are their corresponding channel names?":
-        query1 = """SELECT CHANNEL_NAME,VIDEO_NAME,COMMENTS_COUNT FROM VIDEO_TABLE ORDER BY COMMENTS_COUNT DESC;"""
+        query1 = """SELECT CHANNEL_NAME,VIDEO_NAME,COMMENTS_COUNT FROM VIDEO_TABLE ORDER BY COMMENTS_COUNT DESC LIMIT 10;"""
         cursor.execute(query1)
         t1 = cursor.fetchall()
         df1 = pd.DataFrame(t1,columns=["CHANNEL NAME","VIDEO_NAME","COMMENTS_COUNT"])
         df1.index = df1.index + 1
         st.write(df1)
+        df = pd.DataFrame(df1)
+        df["VIDEO_CHANNEL"] = df["VIDEO_NAME"] + " - " + df["CHANNEL NAME"]
+        fig=px.bar(df,x="VIDEO_CHANNEL",y="COMMENTS_COUNT")
+        st.plotly_chart(fig)
 
     if st.button("Done"):
         st.balloons()
 
-elif selected == "Migration of Data":
-    client = pymongo.MongoClient('mongodb+srv://jeriyl94:atlas12345@youtubedataharvestingwa.oppgas0.mongodb.net/')
-    db = client["Utube"]
-    collection = db["Utube Details"]
 
-    # Retrieve channel names and IDs from MongoDB collection
-    channel_data = collection.find({}, {"_id": 0, "Channel-Details": 1})
-    channels = [(ch_data["Channel-Details"]["CHANNEL_NAME"], ch_data["Channel-Details"]["CHANNEL_ID"]) for ch_data in channel_data]
-
-    # Dropdown to select a channel for migration
-    selected_channel = st.selectbox(
-        'Choose the Channel to get stored in MySQL',
-        [channel[0] for channel in channels])  # Display channel names in the dropdown
-
-    migration_button_clicked = st.button("Migrate Data")
-
-    if migration_button_clicked:
-        selected_channel_id = next(channel[1] for channel in channels if channel[0] == selected_channel)
-        tables(selected_channel_id)
-        st.success("Tables are inserted in the MySQL")
 
 
 
